@@ -1,0 +1,36 @@
+{
+  "manifest_version": 2,
+  "name": "SyncStream",
+  "description": "description",
+  "version": "0.0.0",
+  "icons": {
+    "64": "icons/icon.png"
+  },
+
+  "sidebar_action": {
+    "default_icon": "icons/icon.png",
+    "default_title" : "SyncStream",
+    "default_panel": "index.html"
+  },
+
+  "background": {
+    "scripts": ["background-script.js"],
+    "persistent": false,
+    "type": "module"
+  },
+
+  "permissions":[
+    "*://localhost:8080/*",
+    "tabs",
+    "activeTab",
+    "storage"
+  ],
+
+  "commands": {
+    "_execute_sidebar_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L"
+      }
+    }
+  }
+}
