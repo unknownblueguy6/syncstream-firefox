@@ -11,7 +11,8 @@
     "lint": "eslint src",
     "format": "prettier src --write",
     "test": "vitest run",
-    "start:firefoxdev": "web-ext run --source-dir dist --firefox=firefoxdeveloperedition"
+    "start:firefoxdev": "web-ext run --source-dir dist --firefox=firefoxdeveloperedition --devtools --start-url https://www.youtube.com/watch?v=lMVv3qz-rHs",
+    "start:firefoxdev2": "web-ext run --source-dir dist --firefox=firefoxdeveloperedition --browser-console"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.0.2",
@@ -29,11 +30,13 @@
     "typescript": "^5.2.2",
     "typescript-eslint": "^7.7.1",
     "vite": "^5.2.0",
+    "vite-plugin-full-reload": "^1.1.0",
     "vitest": "^1.5.2",
     "web-ext": "^7.11.0",
     "webextension-polyfill": "^0.11.0"
   },
   "dependencies": {
+    "sockette": "^2.0.6",
     "uuid": "^9.0.1"
   }
 }

@@ -1,8 +1,8 @@
-import "./app.css";
-import App from "./App.svelte";
+import "./sidebar.css";
+import Sidebar from "./Sidebar.svelte";
 
-const app = new App({
-  target: document.getElementById("app")!,
+const sidebar = new Sidebar({
+  target: document.getElementById("sidebar")!,
 });
 
-export default app;
+export default sidebar;
