@@ -6,8 +6,7 @@ type ServerEvent = {
 };
 
 enum ServerEventType {
-  ZERO,
-  USER_JOIN,
+  USER_JOIN = 1,
   USER_LEFT,
   ROOM_STATE,
   PLAY,
@@ -65,28 +64,27 @@ type VideoElementCheckData = {
   hasVideoElement: boolean;
 };
 
-type VideoStreamStateData = {
+type StreamState = {
   paused: boolean;
   currentTime: number;
   playbackRate: number;
+};
+
+type VideoStreamStateData = {
+  streamState: StreamState;
   url: string;
 };
 
-type RoomStateData = {
-  streamState: {
-    paused: boolean;
-    currentTime: number;
-    playbackRate: number;
-  };
+interface RoomStateData{
   url: string;
+  streamState: StreamState;
   streamElement: object | null;
-  users?: string[];
+  users: string[];
 };
 
 type ContentEventData =
   | VideoElementCheckData
   | VideoStreamStateData
-  | RoomStateData
   | object;
 
 type ContentEvent = {
@@ -96,6 +94,8 @@ type ContentEvent = {
 };
 
 export {
+  type StreamState,
+  type RoomStateData,
   type UIEvent,
   UIEventType,
   type ContentEvent,
