@@ -17,6 +17,18 @@ code.subscribe((value: string) => {
 
 const HOST_PATTERN = "://localhost:8080";
 
+async function getActiveTab(): Promise<void | browser.Tabs.Tab>{
+  try {
+    const tab_results = await browser.tabs.query({active: true, currentWindow: true})
+    return tab_results[0];
+  }
+  catch (error) {
+    console.error("Error getting active tab", error);
+  };
+}
+
+let newTab: browser.Tabs.Tab | undefined;
+
 const ports: {
   ui?: browser.Runtime.Port;
   contentScript?: browser.Runtime.Port;
@@ -143,14 +155,20 @@ async function uiEventListener(message: UIEvent) {
         success: true,
       },
     };
+    
+    newTab = await browser.tabs.create({active: true});
+    ports.contentScript?.disconnect();
+    ports.contentScript = undefined
+    
     joinRoomEvent.data.success &&= await initiateJoin(message.data.code);
+
     if (joinRoomEvent.data.success) {
       console.log("joined created room!");
       initEvent.data.canCreateRoom = false;
       initEvent.data.isEditable = false;
       code.set(message.data.code);
     }
-    ports.ui.postMessage(joinRoomEvent);
+    ports.ui?.postMessage(joinRoomEvent);
   }
 }
 
@@ -212,31 +230,32 @@ function joinRoom(token: string) {
 async function handleServerEvent(event: ServerEvent) {
   switch (event.type) {
     case ServerEventType.ROOM_STATE: {
-      const tab_results = await browser.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-      const activeTab = tab_results[0];
-      if (activeTab.url !== event.data.url) {
-        const newTab = await browser.tabs.create({
-          url: event.data.url,
-        });
-        if (ports.contentScript !== undefined) {
-          ports.contentScript.disconnect();
-        }
+      console.log("received room state event");
+      roomState.updateRoom(event.data, event.sourceID);
+      ports.ui?.postMessage(event);
+
+      const activeTab = await getActiveTab();
+      console.log(activeTab?.url, roomState.url)
+
+      if (activeTab?.url !== roomState.url) {
+        console.log("tab url is different from room url");
         browser.tabs.onUpdated.addListener(async (tabID, changeInfo) => {
-          if (tabID === newTab.id && changeInfo.status === "complete") {
+          if (tabID === activeTab?.id! && changeInfo.status === "complete") {
             await browser.scripting.executeScript({
               files: ["content-script.js"],
               target: {
-                tabId: newTab.id!,
+                  tabId: activeTab?.id!,
               },
             });
-            browser.tabs.sendMessage(newTab.id!, event);
+              browser.tabs.sendMessage(activeTab?.id!, event);
           }
         });
-        console.log("?");
+        browser.tabs.update(activeTab?.id!, {url: roomState.url});
+      } else {
+        ports.contentScript?.postMessage(event);
       }
+
+      break;
       break;
     }
     default: {
