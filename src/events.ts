@@ -1,6 +1,6 @@
 type ServerEvent = {
   sourceID: string;
-  timestamp: string;
+  timestamp: Date;
   type: ServerEventType;
   data: ServerEventData;
 };
@@ -46,7 +46,7 @@ type JoinRoomData = {
 type UIEventData = CreateRoomData | JoinRoomData | object;
 
 type UIEvent = {
-  timestamp: string;
+  timestamp: Date;
   type: UIEventType;
   data: UIEventData;
 };
@@ -90,7 +90,7 @@ type ContentEventData =
   | object;
 
 type ContentEvent = {
-  timestamp: string;
+  timestamp: Date;
   type: ContentEventType;
   data: ContentEventData;
 };

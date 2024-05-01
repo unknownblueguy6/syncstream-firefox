@@ -17,7 +17,7 @@ const clientPort = browser.runtime.connect({ name: "content-script" });
 
 function main() {
   const videoElementCheckEvent: ContentEvent = {
-    timestamp: new Date().toISOString(),
+    timestamp: new Date(),
     type: ContentEventType.VIDEO_ELEMENT_CHECK,
     data: {
       hasVideoElement: false,
@@ -44,7 +44,7 @@ clientPort.onMessage.addListener((message: ContentEvent) => {
   if (message === undefined) return;
   if (message.type === ContentEventType.VIDEO_STREAM_STATE) {
     const videoStreamStateEvent: ContentEvent = {
-      timestamp: new Date().toISOString(),
+          timestamp: new Date(),
       type: ContentEventType.VIDEO_STREAM_STATE,
       data: {
         paused: videoElement!.paused,

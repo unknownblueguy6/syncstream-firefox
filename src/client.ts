@@ -24,7 +24,7 @@ const ports: {
 } = {};
 
 const initEvent: UIEvent = {
-  timestamp: "",
+  timestamp: new Date(),
   type: UIEventType.ZERO,
   data: {
     canCreateRoom: false,
@@ -190,6 +190,7 @@ function joinRoom(token: string) {
     },
     onmessage: (e) => {
       const event: ServerEvent = JSON.parse(e.data);
+      event.timestamp = new Date(event.timestamp);
       console.log("Received From Server:", event);
       handleServerEvent(event);
     },

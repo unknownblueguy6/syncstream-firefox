@@ -36,7 +36,7 @@
 
   async function createRoom() {
     const createRoomEvent: UIEvent = {
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
       type: UIEventType.CREATE_ROOM,
       data: {},
     };
@@ -47,7 +47,7 @@
   async function joinRoom() {
     if (code_input.length === 6 && /^[A-Z]+$/.test(code_input)) {
       const joinRoomEvent: UIEvent = {
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(),
         type: UIEventType.JOIN_ROOM,
         data: { code: code_input },
       };
