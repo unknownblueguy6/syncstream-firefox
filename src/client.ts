@@ -5,6 +5,7 @@ import Sockette from "sockette";
 import { UIEventType, ContentEventType, ServerEventType } from "./events";
 import type { UIEvent, ContentEvent, ServerEvent } from "./events";
 import { id, code } from "./stores";
+import { RoomState } from "./room";
 
 let id_val = NIL_UUID;
 id.subscribe((value: string) => {
@@ -44,10 +45,12 @@ const initEvent: UIEvent = {
   },
 };
 
+const roomState = new RoomState();
+
 console.log("Client script loaded");
 
 browser.runtime.onConnect.addListener((port) => {
-  console.log("Port connected:", port.name);
+  // console.log("Port connected:", port.name);
   switch (port.name) {
     case "UI":
       console.log("UI port connected");
@@ -57,83 +60,103 @@ browser.runtime.onConnect.addListener((port) => {
       ports.ui.postMessage(initEvent);
       break;
     case "content-script":
-      if (ports.contentScript === undefined) {
-        ports.contentScript = port;
-        ports.contentScript.onMessage.addListener(contentEventListener);
-      }
+      console.log("Content script port connection attempt");
+      ports.contentScript = port;
+      ports.contentScript.onMessage.addListener(contentEventListener);
+      // console.log(canConnectToNewContent)
+      // if (ports.contentScript === undefined) {
+      // }
       break;
   }
 });
 
 async function contentEventListener(message: ContentEvent) {
-  if (message.type === ContentEventType.VIDEO_ELEMENT_CHECK) {
-    console.log("video element check hello!");
-    if (code_val !== "") {
-      initEvent.data.isEditable = false;
-      initEvent.data.canCreateRoom = false;
-    } else {
-      initEvent.data.canCreateRoom = true;
-    }
-    console.log(initEvent);
-    if (ports.ui !== undefined) {
-      ports.ui.postMessage(initEvent);
-    }
-  } else if (message.type === ContentEventType.VIDEO_STREAM_STATE) {
-    console.log("received video steream state!");
-    try {
-      const createResponse = await fetch(`http${HOST_PATTERN}/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: id_val,
-          url: message.data.url,
-          streamState: {
-            paused: message.data.paused,
-            currentTime: message.data.currentTime,
-            playbackRate: message.data.playbackRate,
-          },
-          streamElement: null,
-          timestamp: message.timestamp,
-        }),
-      });
-
-      if (createResponse.ok) {
-        const createResponseJSON = await createResponse.json();
-        const roomCode = createResponseJSON.code as string;
-
-        const createRoomEvent: UIEvent = {
-          timestamp: message.timestamp,
-          type: UIEventType.CREATE_ROOM,
-          data: {
-            code: roomCode,
-            success: createResponse.ok,
-          },
-        };
-
-        createRoomEvent.data.success &&= await initiateJoin(roomCode);
-
-        if (createRoomEvent.data.success) {
-          console.log("created and joined room!");
-          initEvent.data.canCreateRoom = false;
-          initEvent.data.isEditable = false;
-          code.set(roomCode);
-        } else {
-          createRoomEvent.data.code = "";
+    switch (message.type) {
+        case ContentEventType.VIDEO_ELEMENT_CHECK:{
+            console.log("video element check hello!");
+            if (code_val !== "") {
+              initEvent.data.isEditable = false;
+              initEvent.data.canCreateRoom = false;
+              // canConnectToNewContent = false;
+            } else {
+              initEvent.data.canCreateRoom = message.data.hasVideoElement;
+              // canConnectToNewContent = true;
+            }
+            console.log(initEvent);
+            ports.ui?.postMessage(initEvent);
+            break;
         }
-        ports.ui.postMessage(createRoomEvent);
-      } else {
-        console.error(
-          "Failed to create room:",
-          createResponse.status,
-          createResponse.statusText,
-        );
-      }
-    } catch (error) {
-      console.error("/create request failed", error);
+
+        case ContentEventType.VIDEO_STREAM_STATE: {
+            console.log("received video stream state!");
+            try {
+              const createResponse = await fetch(`http${HOST_PATTERN}/create`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  id: id_val,
+                  url: message.data.url,
+                  streamState: message.data.streamState,
+                  streamElement: null,
+                  timestamp: message.timestamp,
+                }),
+              });
+        
+              if (createResponse.ok) {
+                const createResponseJSON = await createResponse.json();
+                const roomCode = createResponseJSON.code as string;
+        
+                const createRoomEvent: UIEvent = {
+                  timestamp: message.timestamp,
+                  type: UIEventType.CREATE_ROOM,
+                  data: {
+                    code: roomCode,
+                    success: createResponse.ok,
+                  },
+                };
+        
+                createRoomEvent.data.success &&= await initiateJoin(roomCode);
+        
+                if (createRoomEvent.data.success) {
+                  console.log("created and joined room!");
+                  initEvent.data.canCreateRoom = false;
+                  initEvent.data.isEditable = false;
+                  code.set(roomCode);
+                } else {
+                  createRoomEvent.data.code = "";
+                }
+                ports.ui.postMessage(createRoomEvent);
+              } else {
+                console.error(
+                  "Failed to create room:",
+                  createResponse.status,
+                  createResponse.statusText,
+                );
+              }
+            } catch (error) {
+              console.error("/create request failed", error);
+            }
+            break;
+        }
+        
+        case ContentEventType.PLAY:
+          console.log("received play event from content");
+          break;
+        case ContentEventType.PAUSE:
+          console.log("received pause event from content");
+          break;
+        case ContentEventType.SEEK:
+          console.log("received seek event from content");
+          break;
     }
-  }
+
+    if (message.type >= ContentEventType.PLAY && message.type <= ContentEventType.SEEK) {
+      roomState.updateStreamState(message);
+      const serverEvent: ServerEvent = roomState.makeServerEvent(id_val, message.type as unknown as ServerEventType);
+      ports.ws?.send(JSON.stringify(serverEvent));
+    }
 }
 
 async function uiEventListener(message: UIEvent) {
@@ -143,7 +166,14 @@ async function uiEventListener(message: UIEvent) {
       const getVideoStreamState: ContentEvent = {
         timestamp: message.timestamp,
         type: ContentEventType.VIDEO_STREAM_STATE,
-        data: {},
+        data: {
+          url: "",
+          streamState: {
+            paused: true,
+            currentTime: 0,
+            playbackRate: 1,
+          }
+        },
       };
       ports.contentScript.postMessage(getVideoStreamState);
     }
@@ -241,14 +271,14 @@ async function handleServerEvent(event: ServerEvent) {
         console.log("tab url is different from room url");
         browser.tabs.onUpdated.addListener(async (tabID, changeInfo) => {
           if (tabID === activeTab?.id! && changeInfo.status === "complete") {
-            await browser.scripting.executeScript({
-              files: ["content-script.js"],
-              target: {
+              await browser.scripting.executeScript({
+                files: ["content-script.js"],
+                target: {
                   tabId: activeTab?.id!,
-              },
-            });
+                },
+              });
               browser.tabs.sendMessage(activeTab?.id!, event);
-          }
+            }
         });
         browser.tabs.update(activeTab?.id!, {url: roomState.url});
       } else {
@@ -256,6 +286,20 @@ async function handleServerEvent(event: ServerEvent) {
       }
 
       break;
+    }
+    case ServerEventType.PLAY:{
+      console.log("received play event")
+      ports.contentScript?.postMessage(event);
+      break;
+    }
+    case ServerEventType.PAUSE:{
+      console.log("received pause event")
+      ports.contentScript?.postMessage(event);
+      break;
+    }
+    case ServerEventType.SEEK:{
+      console.log("received seek event")
+      ports.contentScript?.postMessage(event);
       break;
     }
     default: {
