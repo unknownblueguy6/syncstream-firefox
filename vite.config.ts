@@ -11,6 +11,7 @@ export default defineConfig({
     FullReload(["public/**/*"])
   ],
   build: {
+    target: 'esnext',
     emptyOutDir: true,
     minify: false,
     rollupOptions: {
