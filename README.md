@@ -2,6 +2,9 @@
 
 This is the second component of the syncstream extension, this repo is for the code to support our extension which users will interact with.
 
+## syncstream-server repo
++ [Server Repo](https://github.com/unknownblueguy6/syncstream-server)
+
 # Svelte + TS + Vite
 
 This template should help get you started developing with Svelte and TypeScript in Vite.
