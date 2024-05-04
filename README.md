@@ -2,6 +2,9 @@
 
 This template should help get you started developing with Svelte and TypeScript in Vite.
 
+## syncstream-server repo
++ [Server Repo](https://github.com/unknownblueguy6/syncstream-server)
+
 ## Recommended IDE Setup
 
 [VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
