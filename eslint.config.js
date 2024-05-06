@@ -5,6 +5,7 @@ import tsParser from "@typescript-eslint/parser";
 import svelteParser from "svelte-eslint-parser";
 import eslintPluginSvelte from "eslint-plugin-svelte";
 import eslintConfigPrettier from "eslint-config-prettier";
+import globals from "globals";
 
 export default [
   js.configs.recommended,
@@ -17,6 +18,9 @@ export default [
       parserOptions: {
         parser: tsParser,
       },
+      globals:{
+        ...globals.browser
+      }
     },
   },
   eslintConfigPrettier,
