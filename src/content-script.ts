@@ -1,7 +1,7 @@
 // import browser from "webextension-polyfill";
 
 import type { ContentEvent } from "./events";
-enum ContentEventType {
+enum EventType {
   VIDEO_STREAM_STATE = -2,
   VIDEO_ELEMENT_CHECK = -1,
   ZERO = 0,
@@ -33,7 +33,7 @@ function canSendEvent(){
 function main() {
   const videoElementCheckEvent: ContentEvent = {
     timestamp: new Date(),
-    type: ContentEventType.VIDEO_ELEMENT_CHECK,
+    type: EventType.VIDEO_ELEMENT_CHECK,
     data: {
       hasVideoElement: false,
     },
@@ -58,10 +58,10 @@ clientPort.onMessage.addListener((message: ContentEvent) => {
   console.log(message);
   if (message === undefined) return;
   switch (message.type) {
-    case ContentEventType.VIDEO_STREAM_STATE:{
+    case EventType.VIDEO_STREAM_STATE:{
         const videoStreamStateEvent: ContentEvent = {
           timestamp: new Date(),
-          type: ContentEventType.VIDEO_STREAM_STATE,
+          type: EventType.VIDEO_STREAM_STATE,
           data: {
             streamState:{
                 paused: videoElement!.paused,
@@ -73,10 +73,10 @@ clientPort.onMessage.addListener((message: ContentEvent) => {
         };
         clientPort.postMessage(videoStreamStateEvent);
     }
-    case ContentEventType.ROOM_STATE:
-    case ContentEventType.PLAY:
-    case ContentEventType.PAUSE:
-    case ContentEventType.SEEK:
+    case EventType.ROOM_STATE:
+    case EventType.PLAY:
+    case EventType.PAUSE:
+    case EventType.SEEK:
         updateRoomState(message);
     // default:{
     //     updateRoomState(message);
@@ -87,7 +87,7 @@ clientPort.onMessage.addListener((message: ContentEvent) => {
 browser.runtime.onMessage.addListener((message: ContentEvent) => {
   if (message === undefined) return;
   console.log(message);
-  if (message.type === ContentEventType.ROOM_STATE) {
+  if (message.type === EventType.ROOM_STATE) {
     console.log("room state received");
     updateRoomState(message);
   }
@@ -96,21 +96,21 @@ browser.runtime.onMessage.addListener((message: ContentEvent) => {
 videoElement!.addEventListener("play", (event) => {
     console.log("play event");
     if (canSendEvent()){
-      clientPort.postMessage(generateEvent(ContentEventType.PLAY));
+      clientPort.postMessage(generateEvent(EventType.PLAY));
     }
 })
 
 videoElement!.addEventListener("pause", (event) => {
     console.log("pause event");
     if (canSendEvent()){
-      clientPort.postMessage(generateEvent(ContentEventType.PAUSE));
+      clientPort.postMessage(generateEvent(EventType.PAUSE));
     }
 })
 
 videoElement!.addEventListener("seeked", (event) => {
     console.log("seek event");
     if (canSendEvent()){
-      clientPort.postMessage(generateEvent(ContentEventType.SEEK));
+      clientPort.postMessage(generateEvent(EventType.SEEK));
     }
 })
 
@@ -139,13 +139,13 @@ function updateRoomState(message: ContentEvent) {
         })
         .catch(() => {
           console.log("send pause event");
-          clientPort.postMessage(generateEvent(ContentEventType.PAUSE))
+          clientPort.postMessage(generateEvent(EventType.PAUSE))
         });
     }
   }
 }
 
-function generateEvent(type: ContentEventType): ContentEvent{
+function generateEvent(type: EventType): ContentEvent{
   return {
     timestamp: new Date(),
     type: type,

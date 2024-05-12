@@ -2,8 +2,8 @@ import browser from "webextension-polyfill";
 import { NIL as NIL_UUID } from "uuid";
 import Sockette from "sockette";
 
-import { UIEventType, ContentEventType, ServerEventType } from "./events";
-import type { UIEvent, ContentEvent, ServerEvent } from "./events";
+import { EventType } from "./events";
+import type { UIEvent, ContentEvent, ServerEvent, ServerEventType } from "./events";
 import { id, code } from "./stores";
 import { RoomState } from "./room";
 
@@ -38,7 +38,7 @@ const ports: {
 
 const initEvent: UIEvent = {
   timestamp: new Date(),
-  type: UIEventType.ZERO,
+  type: EventType.ZERO,
   data: {
     canCreateRoom: false,
     isEditable: true,
@@ -72,7 +72,7 @@ browser.runtime.onConnect.addListener((port) => {
 
 async function contentEventListener(message: ContentEvent) {
     switch (message.type) {
-        case ContentEventType.VIDEO_ELEMENT_CHECK:{
+        case EventType.VIDEO_ELEMENT_CHECK:{
             console.log("video element check hello!");
             if (code_val !== "") {
               initEvent.data.isEditable = false;
@@ -87,7 +87,7 @@ async function contentEventListener(message: ContentEvent) {
             break;
         }
 
-        case ContentEventType.VIDEO_STREAM_STATE: {
+        case EventType.VIDEO_STREAM_STATE: {
             console.log("received video stream state!");
             try {
               const createResponse = await fetch(`http${HOST_PATTERN}/create`, {
@@ -110,7 +110,7 @@ async function contentEventListener(message: ContentEvent) {
         
                 const createRoomEvent: UIEvent = {
                   timestamp: message.timestamp,
-                  type: UIEventType.CREATE_ROOM,
+                  type: EventType.CREATE_ROOM,
                   data: {
                     code: roomCode,
                     success: createResponse.ok,
@@ -141,31 +141,31 @@ async function contentEventListener(message: ContentEvent) {
             break;
         }
         
-        case ContentEventType.PLAY:
+        case EventType.PLAY:
           console.log("received play event from content");
           break;
-        case ContentEventType.PAUSE:
+        case EventType.PAUSE:
           console.log("received pause event from content");
           break;
-        case ContentEventType.SEEK:
+        case EventType.SEEK:
           console.log("received seek event from content");
           break;
     }
 
-    if (message.type >= ContentEventType.PLAY && message.type <= ContentEventType.SEEK) {
+    if (message.type >= EventType.PLAY && message.type <= EventType.SEEK) {
       roomState.updateStreamState(message);
-      const serverEvent: ServerEvent = roomState.makeServerEvent(id_val, message.type as unknown as ServerEventType);
+      const serverEvent: ServerEvent = roomState.makeServerEvent(id_val, message.type as ServerEventType);
       ports.ws?.send(JSON.stringify(serverEvent));
     }
 }
 
 async function uiEventListener(message: UIEvent) {
-  if (message.type === UIEventType.CREATE_ROOM) {
+  if (message.type === EventType.CREATE_ROOM) {
     console.log(message);
     if (ports.contentScript !== undefined) {
       const getVideoStreamState: ContentEvent = {
         timestamp: message.timestamp,
-        type: ContentEventType.VIDEO_STREAM_STATE,
+        type: EventType.VIDEO_STREAM_STATE,
         data: {
           url: "",
           streamState: {
@@ -177,10 +177,11 @@ async function uiEventListener(message: UIEvent) {
       };
       ports.contentScript.postMessage(getVideoStreamState);
     }
-  } else if (message.type === UIEventType.JOIN_ROOM) {
+  
+  } else if (message.type === EventType.JOIN_ROOM) {
     const joinRoomEvent: UIEvent = {
       timestamp: message.timestamp,
-      type: UIEventType.JOIN_ROOM,
+      type: EventType.JOIN_ROOM,
       data: {
         success: true,
       },
@@ -259,7 +260,7 @@ function joinRoom(token: string) {
 
 async function handleServerEvent(event: ServerEvent) {
   switch (event.type) {
-    case ServerEventType.ROOM_STATE: {
+    case EventType.ROOM_STATE: {
       console.log("received room state event");
       roomState.updateRoom(event.data, event.sourceID);
       ports.ui?.postMessage(event);
@@ -287,17 +288,17 @@ async function handleServerEvent(event: ServerEvent) {
 
       break;
     }
-    case ServerEventType.PLAY:{
+    case EventType.PLAY:{
       console.log("received play event")
       ports.contentScript?.postMessage(event);
       break;
     }
-    case ServerEventType.PAUSE:{
+    case EventType.PAUSE:{
       console.log("received pause event")
       ports.contentScript?.postMessage(event);
       break;
     }
-    case ServerEventType.SEEK:{
+    case EventType.SEEK:{
       console.log("received seek event")
       ports.contentScript?.postMessage(event);
       break;
