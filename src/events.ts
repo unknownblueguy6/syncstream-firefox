@@ -1,12 +1,10 @@
-type ServerEvent = {
-  sourceID: string;
-  timestamp: Date;
-  type: ServerEventType;
-  data: ServerEventData;
-};
-
-enum ServerEventType {
-  USER_JOIN = 1,
+enum EventType {
+  CREATE_ROOM = -4,
+  JOIN_ROOM,
+  VIDEO_STREAM_STATE,
+  VIDEO_ELEMENT_CHECK,
+  ZERO,
+  USER_JOIN,
   USER_LEFT,
   ROOM_STATE,
   PLAY,
@@ -15,22 +13,51 @@ enum ServerEventType {
   MESSAGE,
 }
 
-type ServerEventData = RoomStateData | object;
+type ServerEvent = {
+  sourceID: string;
+  timestamp: Date;
+  type: ServerEventType;
+  data: ServerEventData;
+};
 
-enum UIEventType {
-  CREATE_ROOM = -4,
-  JOIN_ROOM = -3,
-  // VIDEO_STREAM_STATE = -2,
-  // VIDEO_ELEMENT_CHECK = -1,
-  ZERO = 0,
-  // USER_JOIN = 1,
-  // USER_LEFT = 2,
-  ROOM_STATE = 3,
-  // PLAY = 4,
-  // PAUSE = 5,
-  // SEEK = 6,
-  MESSAGE = 7,
-}
+type UIEvent = {
+  timestamp: Date;
+  type: UIEventType;
+  data: UIEventData;
+};
+
+type ContentEvent = {
+  timestamp: Date;
+  type: ContentEventType;
+  data: ContentEventData;
+};
+
+type ServerEventType =
+  | EventType.USER_JOIN
+  | EventType.USER_LEFT
+  | EventType.ROOM_STATE
+  | EventType.PLAY
+  | EventType.PAUSE
+  | EventType.SEEK
+  | EventType.MESSAGE;
+type UIEventType =
+  | EventType.CREATE_ROOM
+  | EventType.JOIN_ROOM
+  | EventType.ZERO
+  | EventType.ROOM_STATE
+  | EventType.MESSAGE;
+type ContentEventType =
+  | EventType.VIDEO_STREAM_STATE
+  | EventType.VIDEO_ELEMENT_CHECK
+  | EventType.ZERO
+  | EventType.ROOM_STATE
+  | EventType.PLAY
+  | EventType.PAUSE
+  | EventType.SEEK;
+
+type ServerEventData = RoomStateData | MessageData | object;
+type UIEventData = CreateRoomData | JoinRoomData | MessageData | object;
+type ContentEventData = VideoElementCheckData | VideoStreamStateData | object;
 
 type CreateRoomData = {
   code: string;
@@ -42,23 +69,10 @@ type JoinRoomData = {
   success?: boolean;
 };
 
-type UIEventData = CreateRoomData | JoinRoomData | object;
-
-type UIEvent = {
-  timestamp: Date;
-  type: UIEventType;
-  data: UIEventData;
+type VideoStreamStateData = {
+  streamState: StreamState;
+  url: string;
 };
-
-enum ContentEventType {
-  VIDEO_STREAM_STATE = -2,
-  VIDEO_ELEMENT_CHECK = -1,
-  ZERO = 0,
-  ROOM_STATE = 3,
-  PLAY = 4,
-  PAUSE = 5,
-  SEEK = 6,
-}
 
 type VideoElementCheckData = {
   hasVideoElement: boolean;
@@ -70,36 +84,36 @@ type StreamState = {
   playbackRate: number;
 };
 
-type VideoStreamStateData = {
-  streamState: StreamState;
-  url: string;
-};
-
-interface RoomStateData{
+interface RoomStateData {
   url: string;
   streamState: StreamState;
   streamElement: object | null;
   users: string[];
+}
+
+type MessageData = {
+  message: string;
 };
 
-type ContentEventData =
-  | VideoElementCheckData
-  | VideoStreamStateData
-  | object;
-
-type ContentEvent = {
-  timestamp: Date;
-  type: ContentEventType;
-  data: ContentEventData;
-};
+function convertMessageToUIEvent(message: string): UIEvent {
+  return {
+    timestamp: new Date(),
+    type: EventType.MESSAGE,
+    data: {
+      message: message,
+    },
+  };
+}
 
 export {
   type StreamState,
   type RoomStateData,
   type UIEvent,
-  UIEventType,
+  // type UIEventType,
   type ContentEvent,
-  ContentEventType,
+  // type ContentEventType,
   type ServerEvent,
-  ServerEventType,
+  type ServerEventType,
+  EventType,
+  convertMessageToUIEvent,
 };
