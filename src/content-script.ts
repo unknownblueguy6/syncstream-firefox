@@ -17,7 +17,7 @@ const clientPort = browser.runtime.connect({ name: "content-script" });
 
 
 let lastUpdate: Date = new Date();
-const UPDATE_INTERVAL_MILI = 500;
+const UPDATE_INTERVAL_MILI = 75;
 
 function canSendEvent(){
   const currentTime = new Date();
