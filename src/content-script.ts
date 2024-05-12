@@ -15,17 +15,16 @@ console.log("Content script loaded");
 const videoElement = document.querySelector("video");
 const clientPort = browser.runtime.connect({ name: "content-script" });
 
-
 let lastUpdate: Date = new Date();
 const UPDATE_INTERVAL_MILI = 75;
 
-function canSendEvent(){
+function canSendEvent() {
   const currentTime = new Date();
   const elapsedMili = currentTime.getTime() - lastUpdate.getTime();
-  console.log("elapsed mili", elapsedMili)
-  if (elapsedMili > UPDATE_INTERVAL_MILI){
+  console.log("elapsed mili", elapsedMili);
+  if (elapsedMili > UPDATE_INTERVAL_MILI) {
     lastUpdate = currentTime;
-    return true
+    return true;
   }
   return false;
 }
@@ -58,26 +57,38 @@ clientPort.onMessage.addListener((message: ContentEvent) => {
   console.log(message);
   if (message === undefined) return;
   switch (message.type) {
-    case EventType.VIDEO_STREAM_STATE:{
-        const videoStreamStateEvent: ContentEvent = {
-          timestamp: new Date(),
-          type: EventType.VIDEO_STREAM_STATE,
-          data: {
-            streamState:{
-                paused: videoElement!.paused,
-                currentTime: videoElement!.currentTime,
-                playbackRate: videoElement!.playbackRate,
-            },
-            url: window.location.href,
+    case EventType.VIDEO_STREAM_STATE: {
+      const videoStreamStateEvent: ContentEvent = {
+        timestamp: new Date(),
+        type: EventType.VIDEO_STREAM_STATE,
+        data: {
+          streamState: {
+            paused: videoElement!.paused,
+            currentTime: videoElement!.currentTime,
+            playbackRate: videoElement!.playbackRate,
           },
-        };
-        clientPort.postMessage(videoStreamStateEvent);
+          url: window.location.href,
+        },
+      };
+      clientPort.postMessage(videoStreamStateEvent);
+      break;
     }
-    case EventType.ROOM_STATE:
-    case EventType.PLAY:
-    case EventType.PAUSE:
-    case EventType.SEEK:
-        updateRoomState(message);
+    case EventType.ROOM_STATE: {
+      updateRoomState(message);
+      break;
+    }
+    case EventType.PLAY: {
+      updateRoomState(message);
+      break;
+    }
+    case EventType.PAUSE: {
+      updateRoomState(message);
+      break;
+    }
+    case EventType.SEEK: {
+      updateRoomState(message);
+      break;
+    }
     // default:{
     //     updateRoomState(message);
     // }
@@ -93,34 +104,33 @@ browser.runtime.onMessage.addListener((message: ContentEvent) => {
   }
 });
 
-videoElement!.addEventListener("play", (event) => {
-    console.log("play event");
-    if (canSendEvent()){
-      clientPort.postMessage(generateEvent(EventType.PLAY));
-    }
-})
+videoElement!.addEventListener("play", () => {
+  console.log("play event");
+  if (canSendEvent()) {
+    clientPort.postMessage(generateEvent(EventType.PLAY));
+  }
+});
 
-videoElement!.addEventListener("pause", (event) => {
-    console.log("pause event");
-    if (canSendEvent()){
-      clientPort.postMessage(generateEvent(EventType.PAUSE));
-    }
-})
+videoElement!.addEventListener("pause", () => {
+  console.log("pause event");
+  if (canSendEvent()) {
+    clientPort.postMessage(generateEvent(EventType.PAUSE));
+  }
+});
 
-videoElement!.addEventListener("seeked", (event) => {
-    console.log("seek event");
-    if (canSendEvent()){
-      clientPort.postMessage(generateEvent(EventType.SEEK));
-    }
-})
+videoElement!.addEventListener("seeked", () => {
+  console.log("seek event");
+  if (canSendEvent()) {
+    clientPort.postMessage(generateEvent(EventType.SEEK));
+  }
+});
 
 function updateRoomState(message: ContentEvent) {
   console.log("updating room state");
   console.log(message);
-  console.log("video element", videoElement)
+  console.log("video element", videoElement);
   lastUpdate = new Date();
-  let timeDelta =
-    (lastUpdate.getTime() - message.timestamp.getTime()) / 1000;
+  let timeDelta = (lastUpdate.getTime() - message.timestamp.getTime()) / 1000;
   if (message.data.streamState.paused) {
     timeDelta = 0;
   }
@@ -139,22 +149,22 @@ function updateRoomState(message: ContentEvent) {
         })
         .catch(() => {
           console.log("send pause event");
-          clientPort.postMessage(generateEvent(EventType.PAUSE))
+          clientPort.postMessage(generateEvent(EventType.PAUSE));
         });
     }
   }
 }
 
-function generateEvent(type: EventType): ContentEvent{
+function generateEvent(type: EventType): ContentEvent {
   return {
     timestamp: new Date(),
     type: type,
     data: {
-        streamState:{
-            paused: videoElement!.paused,
-            currentTime: videoElement!.currentTime,
-            playbackRate: videoElement!.playbackRate,
-        }
+      streamState: {
+        paused: videoElement!.paused,
+        currentTime: videoElement!.currentTime,
+        playbackRate: videoElement!.playbackRate,
+      },
     },
   };
 }
