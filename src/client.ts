@@ -194,7 +194,7 @@ async function uiEventListener(message: UIEvent) {
       },
     };
 
-    newTab = await browser.tabs.create({ active: true });
+    await browser.tabs.create({ active: true });
     ports.contentScript?.disconnect();
     ports.contentScript = undefined;
 
