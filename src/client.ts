@@ -3,7 +3,12 @@ import { NIL as NIL_UUID } from "uuid";
 import Sockette from "sockette";
 
 import { EventType } from "./events";
-import type { UIEvent, ContentEvent, ServerEvent, ServerEventType } from "./events";
+import type {
+  UIEvent,
+  ContentEvent,
+  ServerEvent,
+  ServerEventType,
+} from "./events";
 import { id, code } from "./stores";
 import { RoomState } from "./room";
 
@@ -18,17 +23,17 @@ code.subscribe((value: string) => {
 
 const HOST_PATTERN = "://localhost:8080";
 
-async function getActiveTab(): Promise<void | browser.Tabs.Tab>{
+async function getActiveTab(): Promise<void | browser.Tabs.Tab> {
   try {
-    const tab_results = await browser.tabs.query({active: true, currentWindow: true})
+    const tab_results = await browser.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
     return tab_results[0];
-  }
-  catch (error) {
+  } catch (error) {
     console.error("Error getting active tab", error);
-  };
+  }
 }
-
-let newTab: browser.Tabs.Tab | undefined;
 
 const ports: {
   ui?: browser.Runtime.Port;
@@ -71,92 +76,95 @@ browser.runtime.onConnect.addListener((port) => {
 });
 
 async function contentEventListener(message: ContentEvent) {
-    switch (message.type) {
-        case EventType.VIDEO_ELEMENT_CHECK:{
-            console.log("video element check hello!");
-            if (code_val !== "") {
-              initEvent.data.isEditable = false;
-              initEvent.data.canCreateRoom = false;
-              // canConnectToNewContent = false;
-            } else {
-              initEvent.data.canCreateRoom = message.data.hasVideoElement;
-              // canConnectToNewContent = true;
-            }
-            console.log(initEvent);
-            ports.ui?.postMessage(initEvent);
-            break;
-        }
-
-        case EventType.VIDEO_STREAM_STATE: {
-            console.log("received video stream state!");
-            try {
-              const createResponse = await fetch(`http${HOST_PATTERN}/create`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  id: id_val,
-                  url: message.data.url,
-                  streamState: message.data.streamState,
-                  streamElement: null,
-                  timestamp: message.timestamp,
-                }),
-              });
-        
-              if (createResponse.ok) {
-                const createResponseJSON = await createResponse.json();
-                const roomCode = createResponseJSON.code as string;
-        
-                const createRoomEvent: UIEvent = {
-                  timestamp: message.timestamp,
-                  type: EventType.CREATE_ROOM,
-                  data: {
-                    code: roomCode,
-                    success: createResponse.ok,
-                  },
-                };
-        
-                createRoomEvent.data.success &&= await initiateJoin(roomCode);
-        
-                if (createRoomEvent.data.success) {
-                  console.log("created and joined room!");
-                  initEvent.data.canCreateRoom = false;
-                  initEvent.data.isEditable = false;
-                  code.set(roomCode);
-                } else {
-                  createRoomEvent.data.code = "";
-                }
-                ports.ui.postMessage(createRoomEvent);
-              } else {
-                console.error(
-                  "Failed to create room:",
-                  createResponse.status,
-                  createResponse.statusText,
-                );
-              }
-            } catch (error) {
-              console.error("/create request failed", error);
-            }
-            break;
-        }
-        
-        case EventType.PLAY:
-          console.log("received play event from content");
-          break;
-        case EventType.PAUSE:
-          console.log("received pause event from content");
-          break;
-        case EventType.SEEK:
-          console.log("received seek event from content");
-          break;
+  switch (message.type) {
+    case EventType.VIDEO_ELEMENT_CHECK: {
+      console.log("video element check hello!");
+      if (code_val !== "") {
+        initEvent.data.isEditable = false;
+        initEvent.data.canCreateRoom = false;
+        // canConnectToNewContent = false;
+      } else {
+        initEvent.data.canCreateRoom = message.data.hasVideoElement;
+        // canConnectToNewContent = true;
+      }
+      console.log(initEvent);
+      ports.ui?.postMessage(initEvent);
+      break;
     }
 
-    if (message.type >= EventType.PLAY && message.type <= EventType.SEEK) {
-      roomState.updateStreamState(message);
-      const serverEvent: ServerEvent = roomState.makeServerEvent(id_val, message.type as ServerEventType);
-      ports.ws?.send(JSON.stringify(serverEvent));
+    case EventType.VIDEO_STREAM_STATE: {
+      console.log("received video stream state!");
+      try {
+        const createResponse = await fetch(`http${HOST_PATTERN}/create`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: id_val,
+            url: message.data.url,
+            streamState: message.data.streamState,
+            streamElement: null,
+            timestamp: message.timestamp,
+          }),
+        });
+
+        if (createResponse.ok) {
+          const createResponseJSON = await createResponse.json();
+          const roomCode = createResponseJSON.code as string;
+
+          const createRoomEvent: UIEvent = {
+            timestamp: message.timestamp,
+            type: EventType.CREATE_ROOM,
+            data: {
+              code: roomCode,
+              success: createResponse.ok,
+            },
+          };
+
+          createRoomEvent.data.success &&= await initiateJoin(roomCode);
+
+          if (createRoomEvent.data.success) {
+            console.log("created and joined room!");
+            initEvent.data.canCreateRoom = false;
+            initEvent.data.isEditable = false;
+            code.set(roomCode);
+          } else {
+            createRoomEvent.data.code = "";
+          }
+          ports.ui.postMessage(createRoomEvent);
+        } else {
+          console.error(
+            "Failed to create room:",
+            createResponse.status,
+            createResponse.statusText,
+          );
+        }
+      } catch (error) {
+        console.error("/create request failed", error);
+      }
+      break;
     }
+
+    case EventType.PLAY:
+      console.log("received play event from content");
+      break;
+    case EventType.PAUSE:
+      console.log("received pause event from content");
+      break;
+    case EventType.SEEK:
+      console.log("received seek event from content");
+      break;
+  }
+
+  if (message.type >= EventType.PLAY && message.type <= EventType.SEEK) {
+    roomState.updateStreamState(message);
+    const serverEvent: ServerEvent = roomState.makeServerEvent(
+      id_val,
+      message.type as ServerEventType,
+    );
+    ports.ws?.send(JSON.stringify(serverEvent));
+  }
 }
 
 async function uiEventListener(message: UIEvent) {
@@ -172,12 +180,11 @@ async function uiEventListener(message: UIEvent) {
             paused: true,
             currentTime: 0,
             playbackRate: 1,
-          }
+          },
         },
       };
       ports.contentScript.postMessage(getVideoStreamState);
     }
-  
   } else if (message.type === EventType.JOIN_ROOM) {
     const joinRoomEvent: UIEvent = {
       timestamp: message.timestamp,
@@ -186,11 +193,11 @@ async function uiEventListener(message: UIEvent) {
         success: true,
       },
     };
-    
-    newTab = await browser.tabs.create({active: true});
+
+    newTab = await browser.tabs.create({ active: true });
     ports.contentScript?.disconnect();
-    ports.contentScript = undefined
-    
+    ports.contentScript = undefined;
+
     joinRoomEvent.data.success &&= await initiateJoin(message.data.code);
 
     if (joinRoomEvent.data.success) {
@@ -200,6 +207,14 @@ async function uiEventListener(message: UIEvent) {
       code.set(message.data.code);
     }
     ports.ui?.postMessage(joinRoomEvent);
+  } else if (message.type === EventType.MESSAGE) {
+    const serverEvent: ServerEvent = {
+      timestamp: message.timestamp,
+      type: message.type,
+      data: message.data,
+      sourceID: id_val,
+    };
+    ports.ws?.send(JSON.stringify(serverEvent));
   }
 }
 
@@ -266,41 +281,49 @@ async function handleServerEvent(event: ServerEvent) {
       ports.ui?.postMessage(event);
 
       const activeTab = await getActiveTab();
-      console.log(activeTab?.url, roomState.url)
+      console.log(activeTab?.url, roomState.url);
 
-      if (activeTab?.url !== roomState.url) {
-        console.log("tab url is different from room url");
-        browser.tabs.onUpdated.addListener(async (tabID, changeInfo) => {
-          if (tabID === activeTab?.id! && changeInfo.status === "complete") {
+      if (activeTab !== null) {
+        if (activeTab.url !== roomState.url) {
+          console.log("tab url is different from room url");
+          browser.tabs.onUpdated.addListener(async (tabID, changeInfo) => {
+            if (tabID === activeTab.id! && changeInfo.status === "complete") {
               await browser.scripting.executeScript({
                 files: ["content-script.js"],
                 target: {
-                  tabId: activeTab?.id!,
+                  tabId: activeTab.id!,
                 },
               });
-              browser.tabs.sendMessage(activeTab?.id!, event);
+              browser.tabs.sendMessage(activeTab.id!, event);
             }
-        });
-        browser.tabs.update(activeTab?.id!, {url: roomState.url});
-      } else {
-        ports.contentScript?.postMessage(event);
+          });
+          browser.tabs.update(activeTab.id!, { url: roomState.url });
+        } else {
+          ports.contentScript?.postMessage(event);
+        }
       }
 
       break;
     }
-    case EventType.PLAY:{
-      console.log("received play event")
+    case EventType.PLAY: {
+      console.log("received play event");
       ports.contentScript?.postMessage(event);
       break;
     }
-    case EventType.PAUSE:{
-      console.log("received pause event")
+    case EventType.PAUSE: {
+      console.log("received pause event");
       ports.contentScript?.postMessage(event);
       break;
     }
-    case EventType.SEEK:{
-      console.log("received seek event")
+    case EventType.SEEK: {
+      console.log("received seek event");
       ports.contentScript?.postMessage(event);
+      break;
+    }
+    case EventType.MESSAGE: {
+      console.log("received message event");
+      event.data.message = `user_${event.sourceID.slice(0, 4)}: ${event.data.message}`;
+      ports.ui?.postMessage(event);
       break;
     }
     default: {

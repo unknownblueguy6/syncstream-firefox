@@ -1,7 +1,9 @@
 <script lang="ts">
+  import browser from "webextension-polyfill";
   import { onMount, onDestroy } from "svelte";
 
   import Room from "./Room.svelte";
+  import { code, messages } from "../stores";
   import { EventType, convertMessageToUIEvent } from "../events";
   import type { UIEvent } from "../events";
 
@@ -15,6 +17,7 @@
     code_input = value;
     if (value !== "") {
       isEditable = false;
+      joinedRoom = true;
     }
   });
 
@@ -54,6 +57,14 @@
     }
   }
 
+  function handleMessage(event: CustomEvent<string>) {
+    console.log("UI received message", event);
+    const rawMessage = event.detail;
+    const formattedMessage = `You: ${rawMessage}`;
+    messages.set([...$messages, formattedMessage]);
+    clientPort.postMessage(convertMessageToUIEvent(rawMessage));
+  }
+
   onMount(() => {
     // Fetch initial code or perform any other initialization logic
     // browser.runtime.onMessage.addListener(eventListener);
@@ -79,6 +90,9 @@
           isEditable = false;
           joinedRoom = true;
         }
+      } else if (event.type === EventType.MESSAGE) {
+        console.log("MESSAGE");
+        messages.set([...$messages, event.data.message]);
       }
     });
   });
@@ -107,6 +121,6 @@
 
   <hr />
   {#if joinedRoom}
-    <Room />
+    <Room messages={$messages} on:message={handleMessage} />
   {/if}
 </main>
